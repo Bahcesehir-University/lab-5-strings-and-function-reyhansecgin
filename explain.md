@@ -1,132 +1,348 @@
-# Strings, Function Overloading & Operator Overloading in C++
-
-## 1. Concept Overview
-
-In this lab you build a **MyString** class that wraps `std::string` and exposes custom operations. The two central C++ mechanisms you will practice are:
-
-- **Function Overloading** — defining multiple functions with the *same name* but *different parameter lists*. The compiler automatically selects the correct version based on the arguments you pass.
-- **Operator Overloading** — giving custom meaning to built-in operators (`+`, `==`, `[]`, `<<`, etc.) so they work naturally with your own class, just like they already work with `int` or `std::string`.
-
-Together, these features allow you to write expressive, readable code:
-```cpp
-MyString greeting = MyString("Hello") + MyString(" World");
-cout << greeting[0];  // 'H'
-```
-
----
-
-## 2. Key Concepts
-
-- **Function overloading** is resolved at **compile time** based on the number and types of arguments.
-- The **return type alone** cannot distinguish overloaded functions.
-- **Operator overloading** uses the keyword `operator` followed by the symbol (e.g., `operator+`, `operator==`).
-- Binary operators like `+` can be **member functions** (left operand is `this`) or **free/friend functions**.
-- Stream operators `<<` and `>>` are typically implemented as **friend functions** because the left operand is `ostream`/`istream`, not your class.
-- **`const` correctness** is important: operations that do not modify the object should be marked `const`.
-- Throw `std::out_of_range` for invalid index access to follow the standard library convention.
-
----
-
-## 3. Important Keywords
-
-| Keyword / Term         | Explanation |
-|------------------------|-------------|
-| **Function Overloading** | Multiple functions sharing the same name but differing in parameter types or count |
-| **Operator Overloading** | Defining custom behavior for C++ operators on user-defined types |
-| **`const` member function** | A member function that promises not to modify the object's state |
-| **`friend` function** | A non-member function granted access to a class's private members |
-| **`std::out_of_range`** | Standard exception for index-out-of-bounds errors |
-| **Lexicographic comparison** | Comparing strings character by character using ASCII values (how `<` and `>` work on strings) |
-| **`std::to_string()`** | Converts a number to its string representation |
-| **`std::transform()`** | Applies a function to each element in a range (useful for case conversion) |
-
----
-
-## 4. Common Mistakes
-
-1. **Confusing overload resolution with return type**
-   ```cpp
-   // WRONG: These two are NOT valid overloads
-   int    compute(int x);
-   double compute(int x);  // Error: same parameter list
-   ```
-
-2. **Forgetting `const` on non-modifying methods**
-   ```cpp
-   // WRONG: Can't call length() on a const MyString reference
-   int length() { return data.length(); }
-
-   // CORRECT:
-   int length() const { return data.length(); }
-   ```
-
-3. **Not returning a reference from `operator<<`**
-   ```cpp
-   // WRONG: Breaks chaining (cout << a << b)
-   void operator<<(ostream& os, const MyString& s);
-
-   // CORRECT:
-   ostream& operator<<(ostream& os, const MyString& s);
-   ```
-
-4. **Modifying `this` instead of returning a new object**
-   ```cpp
-   // WRONG: toUpperCase should not change the original
-   MyString toUpperCase() const {
-       // Don't do: transform(data.begin(), ...)  ← data is const!
-       string result = data;
-       transform(result.begin(), result.end(), result.begin(), ::toupper);
-       return MyString(result);
-   }
-   ```
-
-5. **Infinite loop in string replace**
-   ```cpp
-   // If you replace "a" with "ab", you must advance past the replacement
-   pos += newStr.length();  // Skip past what we just inserted
-   ```
-
----
-
-## 5. Mini Examples
-
-### Function Overloading
-```cpp
-MyString s("Score: ");
-
-s.append(MyString("100"));   // "Score: 100"   — MyString version
-s.append("pts");             // "Score: pts"   — C-string version
-s.append('!');               // "Score: !"     — char version
-s.append(42);                // "Score: 42"    — int version
-```
-
-### Operator Overloading
-```cpp
-MyString a("C++");
-MyString b("C++");
-MyString c("Java");
-
-a + c;      // "C++Java"          operator+
-a == b;     // true                operator==
-a != c;     // true                operator!=
-c < a;      // false (J > C)       operator<
-a[0];       // 'C'                 operator[]
-a * 2;      // "C++C++"            operator*
-cout << a;  // prints "C++"        operator<<
-```
-
-### Stream Input
-```cpp
-MyString name;
-istringstream iss("Alice Bob");
-iss >> name;   // name is now "Alice"
-```
-
----
-
-## 6. When to Use This
-
-- **Function overloading**: When you need a single operation that can accept different input types (e.g., a `print` function that works for `int`, `double`, and `string`).
-- **Operator overloading**: When your class represents a value type (strings, vectors, complex numbers, matrices) and you want natural mathematical or logical syntax.
-- **Custom string class**: In embedded systems, game engines, or performance-critical code where `std::string` may not meet specific requirements.
-- **General principle**: Use overloading to make your API intuitive — callers should not need to remember `appendString()`, `appendChar()`, `appendInt()` separately.
+// ============================================================
+// Lab: Strings and String Operations with Function & Operator
+//       Overloading in C++
+// Course: Object-Oriented Programming for Engineers
+// Level: 2nd Year Engineering
+// Duration: 70 minutes
+// ============================================================
+// SINGLE FILE IMPLEMENTATION - No header files allowed
+// ============================================================
+// STUDENT VERSION - Implement all TODO sections
+// ============================================================
+ 
+#include <iostream>
+#include <string>
+#include <algorithm>
+#include <cctype>
+#include <sstream>
+#include <vector>
+#include <stdexcept>
+ 
+using namespace std;
+ 
+// ================================
+// CLASS DEFINITIONS
+// ================================
+ 
+class MyString {
+private:
+    string data;
+ 
+public:
+    // ---- Constructors ----
+    MyString();
+    MyString(const string& str);
+    MyString(const char* str);
+ 
+    // ---- Getter ----
+    string getData() const;
+ 
+    // ---- Basic String Operations ----
+    int length() const;
+    char charAt(int index) const;
+    MyString substring(int start, int len) const;
+ 
+    // ---- String Manipulation ----
+    MyString toUpperCase() const;
+    MyString toLowerCase() const;
+    MyString trim() const;
+    MyString reverse() const;
+ 
+    // ---- Search Operations ----
+    int find(const MyString& target) const;
+    int count(char ch) const;
+ 
+    // ---- Function Overloading: append ----
+    MyString append(const MyString& other) const;
+    MyString append(const char* cstr) const;
+    MyString append(char ch) const;
+    MyString append(int number) const;
+ 
+    // ---- Function Overloading: replace ----
+    MyString replace(char oldCh, char newCh) const;
+    MyString replace(const string& oldStr, const string& newStr) const;
+ 
+    // ---- Operator Overloading ----
+    MyString operator+(const MyString& other) const;   // Concatenation
+    bool operator==(const MyString& other) const;       // Equality
+    bool operator!=(const MyString& other) const;       // Inequality
+    bool operator<(const MyString& other) const;        // Less than
+    bool operator>(const MyString& other) const;        // Greater than
+    char operator[](int index) const;                    // Indexing
+    MyString operator*(int times) const;                 // Repeat
+ 
+    // ---- Stream Overloading ----
+    friend ostream& operator<<(ostream& os, const MyString& s);
+    friend istream& operator>>(istream& is, MyString& s);
+};
+ 
+// ================================
+// FUNCTION IMPLEMENTATIONS
+// ================================
+ 
+// ---- Constructors ----
+ 
+MyString::MyString() { 
+    data = "";
+}
+ 
+MyString::MyString(const string& str) {
+    // TODO: Initialize data with the given std::string
+    data = str;
+}
+ 
+MyString::MyString(const char* str) {
+    // TODO: Initialize data with the given C-string
+    data = str;
+}
+ 
+// ---- Getter ----
+ 
+string MyString::getData() const {
+    // TODO: Return the internal string data
+    return data;
+}
+ 
+// ---- Basic String Operations ----
+ 
+int MyString::length() const {
+    // TODO: Return the length of the string
+    return data.length();
+}
+ 
+char MyString::charAt(int index) const {
+    // TODO: Return character at given index
+    // Throw std::out_of_range if index is invalid (negative or >= length)
+    if(index <0 || index >= data.length()){
+    throw out_of_range ("Invalid index.");
+    }
+    return data[index];
+}
+ 
+MyString MyString::substring(int start, int len) const {
+    // TODO: Return a substring starting at 'start' with length 'len'
+    // Throw std::out_of_range if start is invalid (negative or >= length)
+    // Hint: Use std::string::substr()
+    if(start < 0 || start >= data.length()){
+      throw out_of_range ("Invalid start.");  
+    }
+    return data.substr(start,len);
+}
+ 
+// ---- String Manipulation ----
+ 
+MyString MyString::toUpperCase() const {
+    // TODO: Return a NEW MyString with all characters converted to upper case
+    // Hint: Use std::transform with ::toupper
+    // Do NOT modify the original object
+        string result = data;
+    transform(result.begin(), result.end(), result.begin(), [](unsigned char c) 
+    {return toupper(c);});
+    return MyString(result);
+}
+ 
+MyString MyString::toLowerCase() const {
+    // TODO: Return a NEW MyString with all characters converted to lower case
+    // Hint: Use std::transform with ::tolower
+    // Do NOT modify the original object
+    string result = data;
+    transform(result.begin(), result.end(), result.begin(), [](unsigned char c) 
+    {return tolower(c);});
+    return MyString(result);
+}
+ 
+MyString MyString::trim() const {
+    // TODO: Return a NEW MyString with leading and trailing whitespace removed
+    // Whitespace includes: space, tab (\t), newline (\n), carriage return (\r)
+    // Hint: Use find_first_not_of and find_last_not_of
+    size_t start = data.find_first_not_of(" \t\n\r");
+    if(start == string::npos)return MyString("");
+    size_t end = data.find_last_not_of(" \t\n\r");
+    return MyString(data.substr(start, end-start+1));
+}
+ 
+MyString MyString::reverse() const {
+    // TODO: Return a NEW MyString with characters in reverse order
+    // Hint: Use std::reverse on a copy
+    string result =data;
+    std::reverse(result.begin() , result.end());
+    return MyString(result);
+}
+ 
+// ---- Search Operations ----
+ 
+int MyString::find(const MyString& target) const {
+    // TODO: Return index of first occurrence of target, or -1 if not found
+    // Hint: Use std::string::find, check against string::npos
+    size_t pos = data.find(target.data);
+    if (pos == string::npos) return -1;
+    return static_cast<int>(pos);
+}
+ 
+int MyString::count(char ch) const {
+    // TODO: Return the number of occurrences of character ch in the string
+    int cnt = 0;
+    for(char c: data){
+        if(c == ch){
+            cnt++;
+        }
+    }
+    return cnt;
+}
+ 
+// ---- Function Overloading: append ----
+MyString MyString::append(const MyString& other) const {
+    return MyString(data + other.data);
+}
+MyString MyString::append(const char* cstr) const {
+    return MyString(data + string(cstr));
+}
+MyString MyString::append(char ch) const {
+    return MyString(data + ch);
+}
+MyString MyString::append(int number) const {
+    return MyString(data + to_string(number));
+}
+// ---- Function Overloading: replace ----
+MyString MyString::replace(char oldCh, char newCh) const {
+    string result = data;
+    for (char& c : result) {
+        if (c == oldCh) c = newCh;
+    }
+    return MyString(result);
+}
+MyString MyString::replace(const string& oldStr, const string& newStr) const {
+    string result = data;
+    size_t pos = 0;
+    while ((pos = result.find(oldStr, pos)) != string::npos) {
+        result.replace(pos, oldStr.length(), newStr);
+        pos += newStr.length();
+    }
+    return MyString(result);
+}
+// ---- Operator Overloading ----
+MyString MyString::operator+(const MyString& other) const {
+    return MyString(data + other.data);
+}
+bool MyString::operator==(const MyString& other) const {
+    return data == other.data;
+}
+bool MyString::operator!=(const MyString& other) const {
+    return data != other.data;
+}
+bool MyString::operator<(const MyString& other) const {
+    return data < other.data;
+}
+bool MyString::operator>(const MyString& other) const {
+    return data > other.data;
+}
+char MyString::operator[](int index) const {
+    if (index < 0 || index >= static_cast<int>(data.length())) {
+        throw out_of_range("Index out of range in operator[]");
+    }
+    return data[index];
+}
+MyString MyString::operator*(int times) const {
+    if (times <= 0) return MyString("");
+    string result;
+    for (int i = 0; i < times; i++) {
+        result += data;
+    }
+    return MyString(result);
+}
+// ---- Stream Overloading ----
+ostream& operator<<(ostream& os, const MyString& s) {
+    os << s.data;
+    return os;
+}
+istream& operator>>(istream& is, MyString& s) {
+    is >> s.data;
+    return is;
+}
+// ================================
+// MAIN FUNCTION
+// ================================
+ 
+int main() {
+    cout << "=== MyString Lab Demo ===" << endl;
+ 
+    // --- Constructors ---
+    MyString s1("Hello World");
+    MyString s2("hello world");
+    MyString s3;
+    MyString s4(string("C++ Programming"));
+ 
+    // --- 1. Basic Operations ---
+    cout << "\n--- Basic Operations ---" << endl;
+    cout << "s1: " << s1 << endl;
+    cout << "s4: " << s4 << endl;
+    cout << "Length of s1: " << s1.length() << endl;
+    cout << "charAt(0) of s1: " << s1.charAt(0) << endl;
+    cout << "charAt(6) of s1: " << s1.charAt(6) << endl;
+    cout << "substring(0,5) of s1: " << s1.substring(0, 5) << endl;
+    cout << "substring(6,5) of s1: " << s1.substring(6, 5) << endl;
+ 
+    // --- 2. String Manipulation ---
+    cout << "\n--- String Manipulation ---" << endl;
+    cout << "toUpperCase of s1: " << s1.toUpperCase() << endl;
+    cout << "toLowerCase of s1: " << s1.toLowerCase() << endl;
+ 
+    MyString padded("   spaces around   ");
+    cout << "Before trim: [" << padded << "]" << endl;
+    cout << "After  trim: [" << padded.trim() << "]" << endl;
+ 
+    cout << "Reverse of s1: " << s1.reverse() << endl;
+ 
+    // --- 3. Search Operations ---
+    cout << "\n--- Search Operations ---" << endl;
+    cout << "find 'World' in s1: " << s1.find(MyString("World")) << endl;
+    cout << "find 'xyz' in s1:   " << s1.find(MyString("xyz")) << endl;
+    cout << "count 'l' in s1:    " << s1.count('l') << endl;
+    cout << "count 'z' in s1:    " << s1.count('z') << endl;
+ 
+    // --- 4. Function Overloading: append ---
+    cout << "\n--- Function Overloading: append ---" << endl;
+    MyString base("Data");
+    cout << "append(MyString): " << base.append(MyString("Base")) << endl;
+    cout << "append(C-str):    " << base.append("_v2") << endl;
+    cout << "append(char):     " << base.append('!') << endl;
+    cout << "append(int):      " << base.append(42) << endl;
+ 
+    // --- 5. Function Overloading: replace ---
+    cout << "\n--- Function Overloading: replace ---" << endl;
+    MyString rep("aabcaabc");
+    cout << "Original:                " << rep << endl;
+    cout << "replace('a','x'):        " << rep.replace('a', 'x') << endl;
+    cout << "replace(\"abc\",\"XYZ\"): " << rep.replace(string("abc"), string("XYZ")) << endl;
+ 
+    // --- 6. Operator Overloading ---
+    cout << "\n--- Operator Overloading ---" << endl;
+    MyString a("Hello");
+    MyString b(" World");
+    MyString c("Hello");
+ 
+    cout << "a + b:  " << a + b << endl;
+    cout << "a == c: " << (a == c) << endl;
+    cout << "a == b: " << (a == b) << endl;
+    cout << "a != b: " << (a != b) << endl;
+ 
+    MyString apple("Apple");
+    MyString banana("Banana");
+    cout << "Apple < Banana: " << (apple < banana) << endl;
+    cout << "Banana > Apple: " << (banana > apple) << endl;
+ 
+    cout << "a[0]: " << a[0] << endl;
+    cout << "a[4]: " << a[4] << endl;
+ 
+    cout << "a * 3: " << a * 3 << endl;
+    cout << "a * 0: [" << a * 0 << "]" << endl;
+ 
+    // --- 7. Stream Operators ---
+    cout << "\n--- Stream Operators ---" << endl;
+    MyString x("Stream");
+    MyString y("Test");
+    cout << "Chained output: " << x << " " << y << endl;
+ 
+    cout << "\nAll demos complete!" << endl;
+    return 0;
+}
